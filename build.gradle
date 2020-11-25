@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'maven'
 }
 
 group 'com.github.dfauth.strategic.composite'
@@ -14,7 +15,7 @@ repositories {
 
 dependencies {
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
-    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
     testCompile group: 'org.testng', name: 'testng', version: '7.3.0'
     testCompile group: 'com.auth0', name: 'jwks-rsa', version: '0.15.0'
     testCompile group: 'com.github.dfauth', name: 'trycatch', version: '1.0-SNAPSHOT'
