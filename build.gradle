@@ -11,6 +11,9 @@ sourceCompatibility = 11
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url 'https://packages.confluent.io/maven/'
+    }
 }
 
 dependencies {
@@ -19,4 +22,5 @@ dependencies {
     testCompile group: 'org.testng', name: 'testng', version: '7.3.0'
     testCompile group: 'com.auth0', name: 'jwks-rsa', version: '0.15.0'
     testCompile group: 'com.github.dfauth', name: 'trycatch', version: '1.0-SNAPSHOT'
+    testCompile group: 'io.confluent', name: 'kafka-schema-registry-client', version: '5.5.0'
 }
