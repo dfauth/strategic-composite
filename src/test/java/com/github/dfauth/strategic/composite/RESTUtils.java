@@ -28,6 +28,8 @@ public class RESTUtils {
             try {
                 String url = String.format("http://localhost:%d", httpServer.getAddress().getPort());
                 c.accept(url);
+            } catch (RuntimeException e) {
+                logger.error(e.getMessage(), e);
             } finally {
                 httpServer.stop(0);
                 return i.intValue();

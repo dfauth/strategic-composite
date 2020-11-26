@@ -1,15 +1,15 @@
 package com.github.dfauth.strategic.composite;
 
 import com.auth0.jwk.Jwk;
-import com.auth0.jwk.JwkException;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwk.JwkProviderBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static com.github.dfauth.strategic.composite.RESTUtils.mockRestEndpoint;
 import static com.github.dfauth.strategic.composite.StrategicComposite.createCompositeOfType;
 import static com.github.dfauth.strategic.composite.TimedResult.timed;
 import static org.testng.Assert.*;
@@ -38,11 +38,12 @@ public class TestCase {
     public void testJwkProvider() {
         try {
             JwkProvider provider = new JwkProviderBuilder("https://localhost:8080").build();
-            int cnt = RESTUtils.mockRestEndpoint("/.well-known/jwks.json", RESPONSE, url -> {
+            AtomicReference<JwkProvider> composite = new AtomicReference<>();
+            int cnt = mockRestEndpoint("/.well-known/jwks.json", RESPONSE, url -> {
                 JwkProvider mock = new JwkProviderBuilder(url).build();
-                JwkProvider composed = createCompositeOfType(JwkProvider.class).compose(provider, mock);
+                composite.set(createCompositeOfType(JwkProvider.class).compose(provider, mock));
                 TimedResult<Jwk> result = timed(() -> {
-                    Jwk mockResult = composed.get(KID);
+                    Jwk mockResult = composite.get().get(KID);
                     assertNotNull(mockResult);
                     return mockResult;
                 });
@@ -50,7 +51,7 @@ public class TestCase {
                 logger.info("first run took "+ result.elapsed()+" msec");
                 assertTrue(result.elapsed()>1000); // first call times out
                 result = timed(() -> {
-                    Jwk mockResult = composed.get(KID);
+                    Jwk mockResult = composite.get().get(KID);
                     assertNotNull(mockResult);
                     return mockResult;
                 });
@@ -58,16 +59,19 @@ public class TestCase {
                 assertTrue(result.elapsed()<10); // subsequent calls are cached
             });
             assertEquals(cnt, 1); // only one call
+
+            // server is now down, but we continue to use the cache
+            TimedResult<Jwk> result = timed(() -> {
+                Jwk mockResult = composite.get().get(KID);
+                assertNotNull(mockResult);
+                return mockResult;
+            });
+            logger.info("third run took "+result.elapsed()+" msec");
+            assertTrue(result.elapsed()<10); // subsequent calls are cached
+
         } catch (Exception e) {
             logger.info(e.getMessage(), e);
             throw new RuntimeException(e);
-        }
-    }
-
-    public static class MockJwkProvider implements JwkProvider {
-        @Override
-        public Jwk get(String keyId) throws JwkException {
-            return new Jwk("kid", "kty", "alg", "use", Collections.emptyList(), "x5u", Collections.emptyList(), "x5t", Collections.emptyMap());
         }
     }
 }
