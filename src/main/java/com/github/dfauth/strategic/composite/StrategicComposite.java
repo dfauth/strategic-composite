@@ -1,5 +1,6 @@
 package com.github.dfauth.strategic.composite;
 
+import com.github.dfauth.trycatch.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.github.dfauth.trycatch.Try.failure;
+import static com.github.dfauth.trycatch.Try.success;
 
 public class StrategicComposite<T> {
 
@@ -53,14 +57,14 @@ public class StrategicComposite<T> {
         return (T) findMethod(current(i), method).map(m -> {
             try {
                 T result = (T) m.invoke(current(i), args);
-                current = strategy.success(current);
+                current = strategy.set(success(result), current);
                 return result;
             } catch (IllegalAccessException e) {
                 logger.info(e.getMessage(), e);
                 throw new RuntimeException(e);
             } catch (InvocationTargetException e) {
                 logger.info(e.getMessage(), e);
-                current = strategy.failure(e.getCause(), i);
+                current = strategy.set(failure(e.getCause()), i);
                 return getComposite(strategy.get(current), method, args);
             }
         }).orElseThrow(() ->
@@ -77,11 +81,9 @@ public class StrategicComposite<T> {
 
     public interface Strategy {
 
-        int failure(Throwable t, int i);
+        int set(Try<?> t, int i);
 
         int get(int current);
-
-        int success(int current);
     }
 
     public static class StickyStrategy implements Strategy {
@@ -93,18 +95,13 @@ public class StrategicComposite<T> {
         }
 
         @Override
-        public int failure(Throwable t, int i) {
-            return i+1%size;
+        public int set(Try<?> t, int i) {
+            return t.map(x -> i).toOptional().orElse(i+1%size);
         }
 
         @Override
         public int get(int i) {
             return i%size;
-        }
-
-        @Override
-        public int success(int i) {
-            return i;
         }
     }
 
